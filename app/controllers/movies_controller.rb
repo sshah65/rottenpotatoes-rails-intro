@@ -5,17 +5,51 @@ class MoviesController < ApplicationController
   end
 
   def show
-    id = params[:id] # retrieve movie ID from URI route
-    @movie = Movie.find(id) # look up movie by unique ID
-    # will render app/views/movies/show.<extension> by default
+    id = params[:id]
+    @movie = Movie.find(id)
   end
 
   def index
-    if params[:sort]=="title" or params[:sort] == "release_date"
-      @movies=Movie.order(params[:sort])
-      @highlight=params[:sort]
+    @highlight = ""
+    @all_ratings = Movie.ratings
+    @selectedMovies = []
+    
+    if params[:reset] then
+      session.clear
+      redirect_to movies_path
+    end
+    
+    reDir = false
+    
+    if session[:ratings] != nil and params[:ratings] == nil then
+      params[:ratings] = session[:ratings]
+      reDir = true
+    end
+    
+    if session[:sort] != nil and params[:sort] == nil then
+      params[:sort] = session[:sort]
+      reDir = true
+    end
+    
+    if reDir then
+      redirect_to movies_path({:sort => params[:sort], :ratings => params[:ratings]})
+    end
+    
+    if params[:ratings] != nil then
+      session[:ratings] = params[:ratings]
+      params[:ratings].each do |rating|
+        @selectedMovies += rating
+      end
     else
-    @movies = Movie.all
+      @selectedMovies = @all_ratings
+    end
+    
+    if params[:sort] == nil then
+      @movies = Movie.where({rating: @selectedMovies})
+    elsif params[:sort] == "title" or params[:sort] == "release_date" then
+      @movies = Movie.order(params[:sort]).where({rating: @selectedMovies})
+      session[:sort] = params[:sort]
+      @highlight = params[:sort]
     end
   end
 
